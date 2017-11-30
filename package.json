@@ -1,0 +1,16 @@
+{
+  "name": "haig",
+  "version": "1.0.0",
+  "description": "Restaurante japones",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "afga",
+  "license": "ISC",
+  "dependencies": {
+    "excel": "^0.1.7",
+    "excel-as-json": "^2.0.1",
+    "xlsx-populate": "^1.11.0"
+  }
+}
