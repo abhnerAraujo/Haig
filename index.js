@@ -1,10 +1,13 @@
 const xlsx = require('xlsx-populate');
 
-var day = 1;
+var day = 0;
 var dishPrice = {};
 var clients = {};
-var clientBill = {};
+var earned = 0;
 var inStock = {};
+var profit = 0;
+var toBuy = {};
+var orders = [];
 //posição do prato com as posições das peças e suas respectivas quantidades para tal prato
 var dishes = [['A2', {
     'B1':'B2'
@@ -31,18 +34,18 @@ var dishes = [['A2', {
     ,'E1':'E5'
     }],];
 var minStock = {
-    'A2':'F2'
-    ,'A3':'F3'
-    ,'A4':'F4'
-    ,'A5':'F5'
-    ,'A6':'F6'
-    ,'A7':'F7'
-    ,'A8':'F8'
-    ,'A9':'F9'
-    ,'A10':'F10'
-    ,'A11':'F11'
-    ,'A12':'F12'
-    ,'A13':'F13'};
+    'Salmão':'F2'
+    ,'Arroz':'F3'
+    ,'Folhas Nori':'F4'
+    ,'Água':'F5'
+    ,'Açúcar':'F6'
+    ,'Sal':'F7'
+    ,'Vinagre de Arroz':'F8'
+    ,'Shoyu':'F9'
+    ,'Gengibre':'F10'
+    ,'Cream Cheese':'F11'
+    ,'Cebolinha':'F12'
+    ,'Ovo':'F13'};;
 var pieceComposition = [['A2', {
     'C1':'C2'
     ,'D1':'D2'
@@ -100,7 +103,23 @@ var pieceComposition = [['A2', {
     ,'N1':'N5'
     }],];
 // Load an existing workbook
+
 var setupAmbient = () => {
+    day = day + 1;
+    clients = {};
+    console.log('----------------------------------------------------------------');
+    console.log('');
+    console.log('Day: ' + day);
+    console.log('Ganho: ' + earned + ' | ' + 'Lucro: ' + profit);
+    console.log('');
+    console.log('----------------------------------------------------------------');
+    orders.forEach(element => {
+        if(element.day == day){
+            updateStock(element.dict);
+        }else{
+            console.log('nothing to buy');
+        }
+    });
     xlsx.fromFileAsync("./spreadsheets/GP.xlsx")
     .then(workbook => {
         console.log('setting the things up before oppening');
@@ -122,7 +141,21 @@ var setupAmbient = () => {
             ,'Cebolinha':'C12'
             ,'Ovo':'C13'};
         //test if stock has the minimum required
-
+        if(day >= 2){
+            toBuy = {};
+            for(key in inStock){
+                if(stock.cell(inStock[key]).value() <= stock.cell(minStock[key]).value()){
+                    toBuy[key] = stock.cell(minStock[key]).value() * 4;
+                    console.log("Precisa Repor: " + JSON.stringify(JSON.parse(JSON.stringify(toBuy))));
+                    console.log(toBuy)
+                    orders.push({
+                        "day": day + 1,
+                        "dict": toBuy
+                    });
+                    //"dict": JSON.parse(JSON.stringify(toBuy))
+                }
+            }
+        }
         rowTotal = 1;
         cellTotal = 0;
         //buscar posição do total
@@ -146,7 +179,7 @@ var setupAmbient = () => {
         //Range com a composição de cada peça de sushi
         console.log('pieces of sushi loaded');
         piecePrice = {};
-
+        
         pieceComposition.forEach(element => {
             name = element[0];
             sum = 0;
@@ -159,20 +192,19 @@ var setupAmbient = () => {
             }
             piecePrice[name] = parseFloat(sum.toPrecision(3));
         });
-        console.log(piecePrice);
         console.log('sushi prices set');
     //Calcular o preço do prato
      dishes.forEach(element => {
          dishPrice[element[0]] = 0;
          for(key in element[1]){
              if(products.cell(key).value() == 'Sushi de Salmão'){
-                 dishPrice[element[0]] = dishPrice[element[0]] + (piecePrice['Sushi de Salmão'] * products.cell(element[1][key]).value());
+                 dishPrice[element[0]] = dishPrice[element[0]] + (piecePrice['A2'] * products.cell(element[1][key]).value());
              }if(products.cell(key).value() == 'Sashimi de Salmão'){
-                 dishPrice[element[0]] = dishPrice[element[0]] + (piecePrice['Sushi de Salmão'] * products.cell(element[1][key]).value());
+                 dishPrice[element[0]] = dishPrice[element[0]] + (piecePrice['A3'] * products.cell(element[1][key]).value());
              }if(products.cell(key).value() == 'Sushi Philadélfia'){
-                 dishPrice[element[0]] = dishPrice[element[0]] + (piecePrice['Sushi de Salmão'] * products.cell(element[1][key]).value());
+                 dishPrice[element[0]] = dishPrice[element[0]] + (piecePrice['A4'] * products.cell(element[1][key]).value());
              }if(products.cell(key).value() == 'Hot Philadélfia'){
-                 dishPrice[element[0]] = dishPrice[element[0]] + (piecePrice['Sushi de Salmão'] * products.cell(element[1][key]).value());
+                 dishPrice[element[0]] = dishPrice[element[0]] + (piecePrice['A5'] * products.cell(element[1][key]).value());
              }
          }
      });
@@ -186,11 +218,24 @@ var setupAmbient = () => {
     }); 
 };
 
+var updateStock = (products) => {
+    console.log(products);
+    xlsx.fromFileAsync("./spreadsheets/GP.xlsx")
+    .then(workbook => {
+        const stock = workbook.sheet("Stock");
+        for(key in products){
+            stock.cell(key).value(products[key]);
+        }
+        return workbook.toFileAsync("./spreadsheets/GP.xlsx");
+    }); 
+};
+
 var randomDish = () => {
-    rand = Math.floor(Math.random()*Object.keys(dishPrice).length);
+    rand = Math.floor(Math.random()*getDicLength(dishPrice));
     i = 0
     for(key in dishPrice){
         if(i == rand){
+            console.log('Prato: ' + key);
             return key;
         }else{
             i++;
@@ -201,7 +246,6 @@ var randomDish = () => {
 var getDish = (position) =>{
     xlsx.fromFileAsync("./spreadsheets/GP.xlsx")
     .then(workbook => {
-        console.log(1)
         return workbook.sheet('Products').cell(position).value();
     });
 };
@@ -227,7 +271,6 @@ var consumption = (client) => {
                 for(key in element[1]){
                     piecePortion[products.cell(key).value()] = products.cell(element[1][key]).value();
                 }
-
             }
         });
         //para cada peçaIngrediente
@@ -244,7 +287,7 @@ var consumption = (client) => {
                         newValue = value - (composition.cell(element[1][ingredient]).value() * piecePortion[key]);
                         newValue = parseFloat(newValue.toPrecision(3));
                         //atualiza a tabela
-                        stock.cell(inStock[composition.cell(ingredient).value()]).value(''+newValue);
+                        stock.cell(inStock[composition.cell(ingredient).value()]).value(newValue);
                     }
                 }
             }            
@@ -260,13 +303,19 @@ function newClient(){
         clients[newId] = dish
         console.log('New client arrived. Total of clients: ' + (newId));
         consumption(newId);
+        earned = earned + (dishPrice[dish] + dishPrice[dish] * 0.4);
+        earned = parseFloat(earned.toPrecision(3));
+        profit = profit + dishPrice[dish] * 0.4;
+        profit = parseFloat(profit.toPrecision(3));
+        console.log('Ganho: ' + earned + ' | ' + 'Lucro: ' + profit);
     }
 }
 
 var reception = () =>{
-    setInterval(newClient, Math.floor(Math.random() * 10000) + 5000);
+    setInterval(newClient, 1000);
 };
 
 setupAmbient();
+setInterval(setupAmbient, 33000)
 
 
